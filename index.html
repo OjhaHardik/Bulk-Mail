@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Mail Bot Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Outfit:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a; --panel: #141414; --line: #2a2a2a; --text: #f2f2f2;
+    --muted: #8a8a8a; --dim: #515151; --red: #d42c3d; --green: #3fb27f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 Inter, system-ui, sans-serif; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1, .label, button, select { font-family: Outfit, Inter, sans-serif; }
+  h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: .2px; }
+  .label { font-size: 12px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  header { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;
+           padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+  header .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--red); margin-right: 10px; vertical-align: middle; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  select, input, button { font-size: 14px; color: var(--text); background: var(--panel); border: 1px solid var(--line);
+                          border-radius: 6px; padding: 8px 12px; }
+  button { cursor: pointer; font-weight: 600; }
+  button.primary { background: var(--red); border-color: var(--red); }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 24px 0; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+  .tile .num { font: 600 28px/1.1 Outfit, sans-serif; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .tile .sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .toolbar input { flex: 1 1 220px; }
+  .chip { background: transparent; font-weight: 500; }
+  .chip[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; min-width: 720px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { background: var(--panel); position: sticky; top: 0; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: 0; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 500; }
+  .b-open { background: rgba(63,178,127,.15); color: var(--green); }
+  .b-click { background: rgba(212,44,61,.18); color: #ff8592; }
+  .b-none { background: #1f1f1f; color: var(--muted); }
+  .b-fail { background: rgba(212,44,61,.35); color: #fff; }
+  .muted { color: var(--muted); }
+  .note { color: var(--dim); font-size: 12px; margin-top: 16px; }
+  .empty { padding: 32px; text-align: center; color: var(--muted); }
+  #login { max-width: 360px; margin: 18vh auto 0; display: grid; gap: 12px; }
+  #login h1 { margin-bottom: 8px; }
+  .error { color: #ff8592; min-height: 20px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <form id="login" hidden>
+    <h1><span class="dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--red);margin-right:10px;vertical-align:middle"></span>Mail Bot</h1>
+    <label class="label" for="pw">Dashboard password</label>
+    <input id="pw" type="password" autocomplete="current-password" required>
+    <button class="primary" type="submit">Open dashboard</button>
+    <div class="error" id="login-error" role="alert"></div>
+  </form>
+
+  <main id="app" hidden>
+    <header>
+      <h1><span class="dot"></span>Mail Bot</h1>
+      <div class="controls">
+        <label class="label" for="campaign">Campaign</label>
+        <select id="campaign"></select>
+        <button id="refresh" type="button">Refresh</button>
+        <button id="logout" type="button" class="chip">Lock</button>
+      </div>
+    </header>
+
+    <section class="tiles" aria-label="Campaign summary">
+      <div class="tile"><div class="label">Sent</div><div class="num" id="t-sent">–</div><div class="sub" id="t-dates"></div></div>
+      <div class="tile"><div class="label">Opened</div><div class="num" id="t-opened">–</div><div class="sub" id="t-openrate"></div></div>
+      <div class="tile"><div class="label">Clicked</div><div class="num" id="t-clicked">–</div><div class="sub" id="t-clickrate"></div></div>
+      <div class="tile"><div class="label">Failed</div><div class="num" id="t-failed">–</div><div class="sub">bounced or rejected</div></div>
+    </section>
+
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search email or name" aria-label="Search recipients">
+      <div role="group" aria-label="Filter recipients" id="filters">
+        <button class="chip" data-f="all" aria-pressed="true">All</button>
+        <button class="chip" data-f="opened" aria-pressed="false">Opened</button>
+        <button class="chip" data-f="unopened" aria-pressed="false">Not opened</button>
+        <button class="chip" data-f="clicked" aria-pressed="false">Clicked</button>
+        <button class="chip" data-f="failed" aria-pressed="false">Failed</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Recipient</th><th>Status</th><th>Sent</th><th>First open</th>
+          <th class="num">Opens</th><th class="num">Clicks</th><th>Last link clicked</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="muted" id="count"></p>
+    <p class="note">Opens are approximate: Apple Mail loads images automatically (counts opens that may not be real),
+      and people who block images never count. Clicks are reliable. Updates every minute.</p>
+  </main>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const store = {
+  get() { try { return sessionStorage.getItem('mb-pw') || ''; } catch { return ''; } },
+  set(v) { try { v ? sessionStorage.setItem('mb-pw', v) : sessionStorage.removeItem('mb-pw'); } catch {} },
+};
+let password = store.get();
+let data = null;
+let filter = 'all';
+let timer = null;
+
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (iso) => iso ? new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+const pct = (n, d) => d ? Math.round((n / d) * 100) + '%' : '–';
+
+async function load(campaign) {
+  const qs = campaign ? '?campaign=' + encodeURIComponent(campaign) : '';
+  const res = await fetch('/api/stats' + qs, { headers: { 'X-Dashboard-Password': password } });
+  if (res.status === 401) throw Object.assign(new Error('Wrong password'), { auth: true });
+  const body = await res.json();
+  if (!body.ok) throw new Error(body.error || 'Something went wrong');
+  return body;
+}
+
+function showLogin(msg) {
+  clearInterval(timer);
+  $('app').hidden = true;
+  $('login').hidden = false;
+  $('login-error').textContent = msg || '';
+  $('pw').focus();
+}
+
+async function refresh(campaign) {
+  try {
+    data = await load(campaign ?? $('campaign').value);
+    $('login').hidden = true;
+    $('app').hidden = false;
+    render();
+  } catch (err) {
+    if (err.auth) { store.set(''); password = ''; showLogin('Wrong password'); }
+    else { $('count').textContent = 'Could not load: ' + err.message; }
+  }
+}
+
+function render() {
+  const sel = $('campaign');
+  sel.innerHTML = data.campaigns.map((c) => `<option ${c.name === data.campaign ? 'selected' : ''}>${esc(c.name)}</option>`).join('')
+    || '<option value="">No campaigns yet</option>';
+
+  const c = data.campaigns.find((x) => x.name === data.campaign) || { sent: 0, failed: 0, opened: 0, clicked: 0 };
+  $('t-sent').textContent = c.sent.toLocaleString();
+  $('t-dates').textContent = c.first_sent ? `${fmt(c.first_sent)} → ${fmt(c.last_sent)}` : 'nothing sent yet';
+  $('t-opened').textContent = c.opened.toLocaleString();
+  $('t-openrate').textContent = pct(c.opened, c.sent) + ' open rate';
+  $('t-clicked').textContent = c.clicked.toLocaleString();
+  $('t-clickrate').textContent = pct(c.clicked, c.sent) + ' click rate';
+  $('t-failed').textContent = c.failed.toLocaleString();
+
+  const q = $('search').value.trim().toLowerCase();
+  const rows = data.recipients
+    .filter((r) => !q || r.email.toLowerCase().includes(q) || String(r.name).toLowerCase().includes(q))
+    .filter((r) => filter === 'all'
+      || (filter === 'opened' && r.opens > 0)
+      || (filter === 'unopened' && r.status === 'sent' && r.opens === 0)
+      || (filter === 'clicked' && r.clicks > 0)
+      || (filter === 'failed' && r.status !== 'sent'))
+    .sort((a, b) => (b.clicks - a.clicks) || (b.opens - a.opens) || (a.sent_at < b.sent_at ? 1 : -1));
+
+  $('rows').innerHTML = rows.length ? rows.map((r) => {
+    const badge = r.status !== 'sent' ? `<span class="badge b-fail" title="${esc(r.detail)}">Failed</span>`
+      : r.clicks ? '<span class="badge b-click">Clicked</span>'
+      : r.opens ? '<span class="badge b-open">Opened</span>'
+      : '<span class="badge b-none">Not opened</span>';
+    return `<tr>
+      <td><div>${esc(r.email)}</div><div class="muted">${esc(r.name)}</div></td>
+      <td>${badge}</td>
+      <td>${fmt(r.sent_at)}</td>
+      <td>${fmt(r.first_open) || '<span class="muted">–</span>'}</td>
+      <td class="num">${r.opens}</td>
+      <td class="num">${r.clicks}</td>
+      <td>${r.last_url ? `<a href="${esc(r.last_url)}" target="_blank" rel="noopener" style="color:inherit">${esc(r.last_url.replace(/^https?:\/\/(www\.)?/, '').slice(0, 40))}</a>` : '<span class="muted">–</span>'}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" class="empty">No recipients match.</td></tr>';
+  $('count').textContent = `Showing ${rows.length.toLocaleString()} of ${data.recipients.length.toLocaleString()} recipients · updated ${new Date().toLocaleTimeString()}`;
+
+  clearInterval(timer);
+  timer = setInterval(() => refresh(), 60000);
+}
+
+$('login').addEventListener('submit', (e) => {
+  e.preventDefault();
+  password = $('pw').value;
+  store.set(password);
+  refresh('');
+});
+$('campaign').addEventListener('change', (e) => refresh(e.target.value));
+$('refresh').addEventListener('click', () => refresh());
+$('logout').addEventListener('click', () => { store.set(''); password = ''; showLogin(''); });
+$('search').addEventListener('input', () => data && render());
+$('filters').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-f]');
+  if (!b) return;
+  filter = b.dataset.f;
+  document.querySelectorAll('#filters [data-f]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  render();
+});
+
+password ? refresh('') : showLogin('');
+</script>
+</body>
+</html>
